@@ -11,6 +11,7 @@ using TimeTrackerAPI.Data;
 using TimeTrackerAPI.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Identity.Web;
+using TimeTrackerAPI.Services;
 
 namespace TimeTrackerAPI.Controllers
 {

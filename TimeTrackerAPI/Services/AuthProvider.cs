@@ -2,7 +2,7 @@
 using Microsoft.Kiota.Abstractions.Authentication;
 using System.Net.Http.Headers;
 
-namespace TimeTrackerAPI
+namespace TimeTrackerAPI.Services
 {
     public class AuthProvider : IAuthenticationProvider
     {

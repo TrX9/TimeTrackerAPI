@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace TimeTrackerAPI
+namespace TimeTrackerAPI.Services
 {
     public static class SHA512Hasher
     {
