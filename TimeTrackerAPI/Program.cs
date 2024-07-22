@@ -3,16 +3,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Identity.Web;
+using Microsoft.Graph;
 using System.Text;
 using TimeTrackerAPI.Data;
-using Microsoft.Extensions.Logging;
-using Microsoft.Graph.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 
 // Configure CORS
@@ -32,14 +31,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configure logging
-builder.Logging.AddConsole(); // Adds Console logging
-builder.Logging.AddDebug();   // Adds Debug logging
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
 // Configure Authentication
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer("Local", options =>
 {
@@ -54,24 +52,10 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
 })
-.AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, "Azure AD", options =>
-{
-    options.Authority = $"https://login.microsoftonline.com/{builder.Configuration["AzureAd:TenantId"]}";
-    options.ClientId = builder.Configuration["AzureAd:ClientId"];
-    options.ClientSecret = builder.Configuration["AzureAd:ClientSecret"];
-    options.ResponseType = "code";
-    options.SaveTokens = true;
-    options.Scope.Add("openid");
-    options.Scope.Add("profile");
-    options.Scope.Add("User.Read");
-    options.CallbackPath = "/signin-oidc"; // Redirect URI
-}).AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"), "AzureAd")
+.AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"), "AzureAd")
     .EnableTokenAcquisitionToCallDownstreamApi()
     .AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"))
-    .AddInMemoryTokenCaches(); // This is necessary for `ITokenAcquisition` to be available
-
-// Register Microsoft Graph service
-//builder.Services.AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"));
+    .AddInMemoryTokenCaches();
 
 // Configure Authorization
 builder.Services.AddAuthorization(options =>
@@ -82,7 +66,6 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();

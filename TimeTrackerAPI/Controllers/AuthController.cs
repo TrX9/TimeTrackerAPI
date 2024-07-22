@@ -12,6 +12,7 @@ using TimeTrackerAPI.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Identity.Web;
 using TimeTrackerAPI.Services;
+using Microsoft.Identity.Web.Resource;
 
 namespace TimeTrackerAPI.Controllers
 {
@@ -42,14 +43,9 @@ namespace TimeTrackerAPI.Controllers
             {
                 _logger.LogInformation("LocalLogin method called.");
 
-                //var hashedpass = BCrypt.Net.BCrypt.HashPassword("test");
                 var login = model.Login.ToLowerInvariant();
                 var user = await _context.Users.SingleOrDefaultAsync(u => u.Login.ToLower() == login);
-                //if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, hashedpass))
-                /*if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
-                {
-                    return Unauthorized();
-                }*/
+                
                 if (user == null)
                 {
                     _logger.LogWarning("User not found.");
@@ -62,7 +58,6 @@ namespace TimeTrackerAPI.Controllers
                     return Unauthorized(new { Message = "Invalid password." });
                 }
                 var token = GenerateJwtToken(user);
-                //return Ok(new { token });
                 return Ok(new { Message = "Access granted for local authenticated user.", Token = token });
             }
             catch (Exception ex)
@@ -72,46 +67,27 @@ namespace TimeTrackerAPI.Controllers
             }
         }
 
-        [HttpPost("login-azure")]
+        [HttpGet("login-azure")]
         [Authorize(AuthenticationSchemes = "AzureAd")]
         public async Task<IActionResult> AzureLogin()
         {
-            try
-            {
-                _logger.LogInformation("AzureLogin method called.");
+            var user = await _graphServiceClient.Me.GetAsync();
 
-                var userId = User.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
-                if (string.IsNullOrEmpty(userId))
-                {
-                    _logger.LogWarning("User ID claim not found.");
-                    return Unauthorized(new { Message = "Invalid credentials." });
-                }
+            // Check if the user is in the Azure AD directory
+            var directoryUser = await _graphServiceClient.Users[user.Id].GetAsync();
 
-                // Check if the user exists in Azure AD
-                var user = await _graphServiceClient.Users[userId].GetAsync();
-                if (user != null)
-                {
-                    return Ok(new { Message = "Access granted for Azure AD authenticated user." });
-                }
-                else
-                {
-                    _logger.LogWarning("User not found in Azure AD.");
-                    return Unauthorized(new { Message = "User does not have access." });
-                }
-            }
-            catch (ServiceException ex)
+            if (directoryUser != null)
             {
-                _logger.LogWarning("User not found in Azure AD.");
-                return Unauthorized(new { Message = "User does not have access." });
+                // Get an access token to call downstream APIs (if needed)
+                var token = await _tokenAcquisition.GetAccessTokenForUserAsync(new[] { "User.Read" });
+                return Ok(new { Token = token });
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occurred while processing AzureLogin.");
-                return StatusCode(500, "Internal server error");
-            }
+
+            return Unauthorized("User is not present in the directory.");
         }
 
         [HttpGet("signin-oidc")]
+        [Authorize(AuthenticationSchemes = "AzureAd")]
         public async Task<IActionResult> SignInOidc()
         {
             // Handle the redirect from Azure AD and acquire tokens

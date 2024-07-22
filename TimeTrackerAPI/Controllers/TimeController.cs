@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace TimeTrackerAPI.Controllers
 {
-    [Authorize]
+    [ApiController]
+    [Route("api/[controller]")]
     public class TimeController : ControllerBase
     {
         [HttpGet("secure-data")]
