@@ -1,19 +1,15 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.Authorization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Graph;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using TimeTrackerAPI.Data;
 using TimeTrackerAPI.Models;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.Identity.Web;
 using TimeTrackerAPI.Services;
-using Microsoft.Identity.Web.Resource;
-using System.Text.RegularExpressions;
 
 namespace TimeTrackerAPI.Controllers
 {
@@ -23,18 +19,13 @@ namespace TimeTrackerAPI.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
-        private readonly ITokenAcquisition _tokenAcquisition;
         private readonly ILogger<AuthController> _logger;
-        private readonly GraphServiceClient _graphServiceClient;
 
-        public AuthController(ApplicationDbContext context, IConfiguration configuration, ITokenAcquisition tokenAcquisition,
-            ILogger<AuthController> logger, GraphServiceClient graphServiceClient)
+        public AuthController(ApplicationDbContext context, IConfiguration configuration, ILogger<AuthController> logger)
         {
             _context = context;
             _configuration = configuration;
-            _tokenAcquisition = tokenAcquisition;
             _logger = logger;
-            _graphServiceClient = graphServiceClient;
         }
 
         [HttpPost("login")]
@@ -84,57 +75,14 @@ namespace TimeTrackerAPI.Controllers
             }
         }
 
-
-        [HttpGet("login-azure")]
-        [Authorize(AuthenticationSchemes = "AzureAd")]
-        public async Task<IActionResult> AzureLogin()
-        {
-            var user = await _graphServiceClient.Me.GetAsync();
-
-            // Check if the user is in the Azure AD directory
-            var directoryUser = await _graphServiceClient.Users[user.Id].GetAsync();
-
-            if (directoryUser != null)
-            {
-                // Get an access token to call downstream APIs (if needed)
-                var token = await _tokenAcquisition.GetAccessTokenForUserAsync(new[] { "User.Read" });
-                return Ok(new { Token = token });
-            }
-
-            return Unauthorized("User is not present in the directory.");
-        }
-
-        [HttpGet("signin-oidc")]
-        [Authorize(AuthenticationSchemes = "AzureAd")]
-        public async Task<IActionResult> SignInOidc()
-        {
-            // Handle the redirect from Azure AD and acquire tokens
-            var result = await HttpContext.AuthenticateAsync(OpenIdConnectDefaults.AuthenticationScheme);
-            if (!result.Succeeded)
-            {
-                return Unauthorized();
-            }
-
-            var accessToken = result.Properties.GetTokenValue("access_token");
-            if (accessToken == null)
-            {
-                return Unauthorized();
-            }
-
-            // You might want to add additional logic to check if the user exists in Azure AD if needed
-            // e.g., check user claims or roles
-
-            return Ok(new { AccessToken = accessToken });
-        }
-
         private string GenerateJwtToken(User user)
         {
             var claims = new[]
             {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Login),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("EmployeeId", user.Id.ToString())
-        };
+                new Claim(JwtRegisteredClaimNames.Sub, user.Login),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("EmployeeId", user.Id.ToString())
+            };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

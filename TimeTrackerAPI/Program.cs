@@ -17,12 +17,13 @@ builder.Services.AddControllers();
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
+    options.AddPolicy("AllowSpecificOrigins",
         builder =>
         {
-            builder.AllowAnyOrigin()
+            builder.WithOrigins("http://localhost:3000") // Replace with your frontend URL
                    .AllowAnyMethod()
-                   .AllowAnyHeader();
+                   .AllowAnyHeader()
+                   .AllowCredentials();
         });
 });
 
@@ -38,6 +39,7 @@ builder.Logging.AddDebug();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer("Local", options =>
 {
@@ -52,6 +54,40 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
 })
+.AddJwtBearer("AzureAD", options =>
+{
+    options.Authority = builder.Configuration["Jwt:Issuer"];
+    options.Audience = builder.Configuration["Jwt:Audience"];
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuers = new[]
+        {
+            $"https://login.microsoftonline.com/{builder.Configuration["AzureAd:TenantId"]}/v2.0",
+            "https://login.microsoftonline.com/common/v2.0",
+            "https://login.microsoftonline.com/organizations/v2.0",
+            "https://login.microsoftonline.com/consumers/v2.0"
+        },
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["AzureAd:ClientId"],
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            context.Response.Headers.Add("Token-Validation-Failure", context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogInformation("Token validated successfully.");
+            return Task.CompletedTask;
+        }
+    };
+})
 .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"), "AzureAd")
     .EnableTokenAcquisitionToCallDownstreamApi()
     .AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"))
@@ -62,6 +98,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequireAuthenticatedUser", policy =>
     {
+        policy.AddAuthenticationSchemes("Local", "AzureAd");
         policy.RequireAuthenticatedUser();
     });
 });
@@ -77,7 +114,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
+app.UseCors("AllowSpecificOrigins");
 
 app.UseHttpsRedirection();
 

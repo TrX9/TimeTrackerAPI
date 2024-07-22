@@ -8,7 +8,7 @@ namespace TimeTrackerAPI.Controllers
     public class TimeController : ControllerBase
     {
         [HttpGet("secure-data")]
-        [Authorize] // Allows access to users authenticated via either scheme
+        [Authorize(Policy = "RequireAuthenticatedUser")]
         public IActionResult GetSecureData()
         {
             // Your secured logic here
