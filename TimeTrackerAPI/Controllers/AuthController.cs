@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Identity.Web;
 using TimeTrackerAPI.Services;
 using Microsoft.Identity.Web.Resource;
+using System.Text.RegularExpressions;
 
 namespace TimeTrackerAPI.Controllers
 {
@@ -43,20 +44,36 @@ namespace TimeTrackerAPI.Controllers
             {
                 _logger.LogInformation("LocalLogin method called.");
 
+                // Validate username
+                if (string.IsNullOrWhiteSpace(model.Login) || model.Login.Length < 4 || model.Login.Length > 20)
+                {
+                    _logger.LogWarning("Invalid username length.");
+                    return BadRequest(new { Message = "Username must be between 4 and 20 characters." });
+                }
+
+                // Validate password
+                if (string.IsNullOrWhiteSpace(model.Password) || !Regex.IsMatch(model.Password, @"^(?=.*[0-9])[a-z0-9]{8,}$"))
+                {
+                    _logger.LogWarning("Invalid password format.");
+                    return BadRequest(new { Message = "Password must be at least 8 characters long, contain only lowercase Latin letters, and include at least one number." });
+                }
+
                 var login = model.Login.ToLowerInvariant();
                 var user = await _context.Users.SingleOrDefaultAsync(u => u.Login.ToLower() == login);
-                
+
                 if (user == null)
                 {
                     _logger.LogWarning("User not found.");
                     return Unauthorized(new { Message = "Invalid username." });
                 }
+
                 bool isPasswordValid = SHA512Hasher.VerifyPassword(model.Password, user.PasswordHash);
                 if (!isPasswordValid)
                 {
                     _logger.LogWarning("Invalid password.");
                     return Unauthorized(new { Message = "Invalid password." });
                 }
+
                 var token = GenerateJwtToken(user);
                 return Ok(new { Message = "Access granted for local authenticated user.", Token = token });
             }
@@ -66,6 +83,7 @@ namespace TimeTrackerAPI.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
 
         [HttpGet("login-azure")]
         [Authorize(AuthenticationSchemes = "AzureAd")]
