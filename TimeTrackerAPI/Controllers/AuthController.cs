@@ -5,8 +5,6 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using TimeTrackerAPI.Data;
 using TimeTrackerAPI.Models;
 using TimeTrackerAPI.Services;

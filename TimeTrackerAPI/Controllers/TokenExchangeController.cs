@@ -1,11 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace TimeTrackerAPI.Controllers
 {
