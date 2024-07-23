@@ -6,6 +6,7 @@ namespace TimeTrackerAPI.Models
     {
         [Required]
         [MinLength(4, ErrorMessage = "Login must be at least 4 characters long.")]
+        [RegularExpression(@"^[a-zA-Z]{4,}$", ErrorMessage = "Login must be at least 4 characters long and contain only Latin letters.")]
         public string Login { get; set; }
 
         [Required]         
