@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TimeTrackerAPI.Data;
 using TimeTrackerAPI.Models;
 using TimeTrackerAPI.Services;
@@ -24,6 +25,12 @@ namespace TimeTrackerAPI.Controllers
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Login == userDto.Login);
+            if (existingUser != null)
+            {
+                return Conflict(new { message = "User with this login already exists." });
             }
 
             var user = new User
