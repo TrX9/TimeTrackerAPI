@@ -37,14 +37,14 @@ namespace TimeTrackerAPI.Controllers
                 if (string.IsNullOrWhiteSpace(model.Login) || model.Login.Length < 4 || model.Login.Length > 20)
                 {
                     _logger.LogWarning("Invalid username length.");
-                    return BadRequest(new { Message = "Username must be between 4 and 20 characters." });
+                    return BadRequest(new { ErrorCode = "InvalidUsernameLength", Message = "Username must be between 4 and 20 characters." });
                 }
 
                 // Validate password
                 if (string.IsNullOrWhiteSpace(model.Password) || !Regex.IsMatch(model.Password, @"^(?=.*[0-9])[a-z0-9]{8,}$"))
                 {
                     _logger.LogWarning("Invalid password format.");
-                    return BadRequest(new { Message = "Password must be at least 8 characters long, contain only lowercase Latin letters, and include at least one number." });
+                    return BadRequest(new { ErrorCode = "InvalidPasswordFormat", Message = "Password must be at least 8 characters long, contain only lowercase Latin letters, and include at least one number." });
                 }
 
                 var login = model.Login.ToLowerInvariant();
@@ -53,14 +53,14 @@ namespace TimeTrackerAPI.Controllers
                 if (user == null)
                 {
                     _logger.LogWarning("User not found.");
-                    return Unauthorized(new { Message = "Invalid username." });
+                    return Unauthorized(new { ErrorCode = "UserNotFound", Message = "Invalid username." });
                 }
 
                 bool isPasswordValid = SHA512Hasher.VerifyPassword(model.Password, user.PasswordHash);
                 if (!isPasswordValid)
                 {
                     _logger.LogWarning("Invalid password.");
-                    return Unauthorized(new { Message = "Invalid password." });
+                    return Unauthorized(new { ErrorCode = "InvalidPassword", Message = "Invalid password." });
                 }
 
                 var token = GenerateJwtToken(user);
@@ -69,9 +69,10 @@ namespace TimeTrackerAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while processing LocalLogin.");
-                return StatusCode(500, "Internal server error");
+                return StatusCode(500, new { ErrorCode = "InternalServerError", Message = "Internal server error" });
             }
         }
+
 
         private string GenerateJwtToken(User user)
         {
