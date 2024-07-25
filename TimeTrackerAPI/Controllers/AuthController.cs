@@ -53,14 +53,14 @@ namespace TimeTrackerAPI.Controllers
                 if (user == null)
                 {
                     _logger.LogWarning("User not found.");
-                    return Unauthorized(new { ErrorCode = "UserNotFound", Message = "Invalid username." });
+                    return BadRequest(new { ErrorCode = "UserNotFound", Message = "Invalid username." });
                 }
 
                 bool isPasswordValid = SHA512Hasher.VerifyPassword(model.Password, user.PasswordHash);
                 if (!isPasswordValid)
                 {
                     _logger.LogWarning("Invalid password.");
-                    return Unauthorized(new { ErrorCode = "InvalidPassword", Message = "Invalid password." });
+                    return BadRequest(new { ErrorCode = "InvalidPassword", Message = "Invalid password." });
                 }
 
                 var token = GenerateJwtToken(user);
